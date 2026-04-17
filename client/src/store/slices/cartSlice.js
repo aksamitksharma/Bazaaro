@@ -1,13 +1,29 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const savedCart = localStorage.getItem('bazaaro_cart');
+let initialItems = [];
+let initialVendorId = null;
+let initialVendorName = '';
+
+if (savedCart) {
+  try {
+    const parsed = JSON.parse(savedCart);
+    if (Array.isArray(parsed)) {
+      initialItems = parsed;
+    } else {
+      initialItems = parsed.items;
+      initialVendorId = parsed.vendorId;
+      initialVendorName = parsed.vendorName;
+    }
+  } catch (e) {}
+}
 
 const cartSlice = createSlice({
   name: 'cart',
   initialState: {
-    items: savedCart ? JSON.parse(savedCart) : [],
-    vendorId: null,
-    vendorName: '',
+    items: initialItems,
+    vendorId: initialVendorId,
+    vendorName: initialVendorName,
   },
   reducers: {
     addToCart: (state, action) => {
@@ -34,12 +50,12 @@ const cartSlice = createSlice({
           stock: product.stock
         });
       }
-      localStorage.setItem('bazaaro_cart', JSON.stringify(state.items));
+      localStorage.setItem('bazaaro_cart', JSON.stringify({ items: state.items, vendorId: state.vendorId, vendorName: state.vendorName }));
     },
     removeFromCart: (state, action) => {
       state.items = state.items.filter(i => i.productId !== action.payload);
       if (state.items.length === 0) { state.vendorId = null; state.vendorName = ''; }
-      localStorage.setItem('bazaaro_cart', JSON.stringify(state.items));
+      localStorage.setItem('bazaaro_cart', JSON.stringify({ items: state.items, vendorId: state.vendorId, vendorName: state.vendorName }));
     },
     updateQuantity: (state, action) => {
       const { productId, quantity } = action.payload;
@@ -52,7 +68,7 @@ const cartSlice = createSlice({
         }
       }
       if (state.items.length === 0) { state.vendorId = null; state.vendorName = ''; }
-      localStorage.setItem('bazaaro_cart', JSON.stringify(state.items));
+      localStorage.setItem('bazaaro_cart', JSON.stringify({ items: state.items, vendorId: state.vendorId, vendorName: state.vendorName }));
     },
     clearCart: (state) => {
       state.items = [];

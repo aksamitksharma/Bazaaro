@@ -15,7 +15,7 @@ export default function AdminVendors() {
 
   const loadVendors = async () => {
     try {
-      const { data } = await adminAPI.getPendingVendors();
+      const { data } = await adminAPI.getVendors();
       setVendors(data.vendors || []);
     } catch { }
     setLoading(false);
@@ -37,7 +37,7 @@ export default function AdminVendors() {
 
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {[1,2,3].map(i => <div key={i} className="shimmer" style={{ height: 90, borderRadius: 'var(--radius-lg)' }} />)}
+          {[1, 2, 3].map(i => <div key={i} className="shimmer" style={{ height: 90, borderRadius: 'var(--radius-lg)' }} />)}
         </div>
       ) : vendors.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -101,7 +101,7 @@ export default function AdminVendors() {
       ) : (
         <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-lg)', padding: '3rem', textAlign: 'center', color: 'var(--text-3)' }}>
           <StorefrontIcon style={{ fontSize: '3rem', opacity: 0.3 }} />
-          <p style={{ fontWeight: 600, marginTop: '0.5rem' }}>No pending vendor requests</p>
+          <p style={{ fontWeight: 600, marginTop: '0.5rem' }}>No vendors found</p>
         </div>
       )}
     </div>

@@ -25,7 +25,7 @@ export default function VendorOrders() {
 
   const updateStatus = async (id, status) => {
     try {
-      await orderAPI.updateStatus(id, { orderStatus: status });
+      await orderAPI.updateStatus(id, { status });
       toast.success(`Order → ${status}`);
       loadOrders();
     } catch (err) {

@@ -46,30 +46,53 @@ exports.placeOrder = async (req, res) => {
       await product.save();
     }
 
-    // Calculate delivery charge
-    let deliveryCharge = 0;
+    // Match frontend flat delivery fee logic (Free over ₹200) to avoid huge cross-country location distance charges
+    let deliveryCharge = subtotal >= 200 ? 0 : 30;
+
     if (deliveryAddress?.coordinates && vendor.address?.coordinates?.coordinates) {
       const [vLng, vLat] = vendor.address.coordinates.coordinates;
       const dist = calculateDistance(deliveryAddress.coordinates.lat, deliveryAddress.coordinates.lng, vLat, vLng);
-      deliveryCharge = calculateDeliveryCharge(dist);
-    } else {
-      deliveryCharge = 30; // default
+      
+      // Warn but don't block in dev to allow testing across cities
+      if (dist > (vendor.deliveryRadius || 10) && process.env.NODE_ENV !== 'development') {
+        return res.status(400).json({ success: false, message: `Delivery address is outside vendor radius (${dist.toFixed(1)} km away)` });
+      }
     }
 
     // Apply coupon
     let discount = 0;
     if (couponCode) {
       const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
-      if (coupon && coupon.validUntil > new Date() && subtotal >= coupon.minOrderAmount) {
-        if (coupon.discountType === 'percentage') {
-          discount = Math.min((subtotal * coupon.discountValue) / 100, coupon.maxDiscount || Infinity);
-        } else {
-          discount = coupon.discountValue;
-        }
-        coupon.usedCount += 1;
-        coupon.usedBy.push(req.user._id);
-        await coupon.save();
+      if (!coupon) {
+        return res.status(400).json({ success: false, message: 'Invalid coupon code' });
       }
+      if (coupon.validUntil < new Date()) {
+        return res.status(400).json({ success: false, message: 'Coupon has expired' });
+      }
+      if (subtotal < coupon.minOrderAmount) {
+        return res.status(400).json({ success: false, message: `Minimum order amount of ₹${coupon.minOrderAmount} required` });
+      }
+      if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
+        return res.status(400).json({ success: false, message: 'Coupon usage limit reached' });
+      }
+      if (coupon.vendorId && coupon.vendorId.toString() !== vendorId) {
+        return res.status(400).json({ success: false, message: 'Coupon is not applicable for this vendor' });
+      }
+      
+      const userUsageCount = coupon.usedBy.filter(id => id.toString() === req.user._id.toString()).length;
+      if (userUsageCount >= coupon.perUserLimit) {
+        return res.status(400).json({ success: false, message: 'You have exceeded the usage limit for this coupon' });
+      }
+
+      if (coupon.discountType === 'percentage') {
+        discount = Math.min((subtotal * coupon.discountValue) / 100, coupon.maxDiscount || Infinity);
+      } else {
+        discount = coupon.discountValue;
+      }
+      
+      coupon.usedCount += 1;
+      coupon.usedBy.push(req.user._id);
+      await coupon.save();
     }
 
     const tax = Math.round(subtotal * 0.05); // 5% tax
@@ -188,6 +211,48 @@ exports.updateOrderStatus = async (req, res) => {
     order.orderStatus = status;
     order.statusHistory.push({ status, timestamp: new Date(), note });
 
+    // Automated Delivery Assignment Logic
+    if (status === 'ready' && !order.deliveryPartnerId) {
+      const vLat = order.vendorAddress?.coordinates?.lat;
+      const vLng = order.orderAddress?.coordinates?.lng || order.vendorAddress?.coordinates?.lng;
+      if (vLat !== undefined && vLng !== undefined) {
+        const nearestPartner = await DeliveryPartner.findOne({
+          isOnline: true,
+          isAvailable: true,
+          isVerified: true,
+          currentLocation: {
+            $near: {
+              $geometry: { type: 'Point', coordinates: [vLng, vLat] },
+              $maxDistance: 10000 // 10km radius
+            }
+          }
+        });
+
+        if (nearestPartner) {
+          order.deliveryPartnerId = nearestPartner._id;
+          order.statusHistory.push({ status: 'assigned', timestamp: new Date(), note: 'System auto-assigned to nearest rider' });
+          
+          nearestPartner.isAvailable = false;
+          nearestPartner.currentOrderId = order._id;
+          await nearestPartner.save();
+
+          await Notification.create({
+            userId: nearestPartner.userId,
+            title: '🚚 New Delivery Assigned!',
+            message: `You have been automatically assigned Order #${order.orderNumber}.`,
+            type: 'delivery',
+            data: { orderId: order._id }
+          });
+
+          if (req.io) {
+            req.io.to(`delivery_${nearestPartner._id}`).emit('new_delivery', { orderId: order._id });
+          }
+        } else {
+          order.statusHistory.push({ status: 'ready', timestamp: new Date(), note: 'No riders nearby, awaiting manual assignment' });
+        }
+      }
+    }
+
     if (status === 'delivered') {
       order.actualDelivery = new Date();
       order.paymentStatus = 'paid';
@@ -303,6 +368,98 @@ exports.trackOrder = async (req, res) => {
         customerLocation: order.deliveryAddress?.coordinates,
         estimatedDelivery: order.estimatedDelivery
       }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Validate coupon
+// @route   POST /api/orders/validate-coupon
+exports.validateCoupon = async (req, res) => {
+  try {
+    const { code, subtotal, vendorId } = req.body;
+    if (!code) return res.status(400).json({ success: false, message: 'Coupon code is required' });
+
+    const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
+    if (!coupon) {
+      return res.status(404).json({ success: false, message: 'Invalid coupon code' });
+    }
+    
+    if (coupon.validUntil < new Date()) {
+      return res.status(400).json({ success: false, message: 'Coupon has expired' });
+    }
+
+    if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
+      return res.status(400).json({ success: false, message: 'Coupon usage limit reached' });
+    }
+
+    if (subtotal < coupon.minOrderAmount) {
+      return res.status(400).json({ success: false, message: `Minimum order amount of ₹${coupon.minOrderAmount} required` });
+    }
+
+    if (coupon.vendorId && coupon.vendorId.toString() !== vendorId) {
+      return res.status(400).json({ success: false, message: 'Coupon is not applicable for this vendor' });
+    }
+
+    // Per user limit check
+    const userUsageCount = coupon.usedBy.filter(id => id.toString() === req.user._id.toString()).length;
+    if (userUsageCount >= coupon.perUserLimit) {
+      return res.status(400).json({ success: false, message: 'You have exceeded the usage limit for this coupon' });
+    }
+
+    let discount = 0;
+    if (coupon.discountType === 'percentage') {
+      discount = (subtotal * coupon.discountValue) / 100;
+      if (coupon.maxDiscount > 0) {
+        discount = Math.min(discount, coupon.maxDiscount);
+      }
+    } else {
+      discount = coupon.discountValue;
+    }
+
+    res.json({ success: true, discount, message: 'Coupon applied successfully', code: coupon.code });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get available coupons
+// @route   GET /api/orders/coupons
+exports.getAvailableCoupons = async (req, res) => {
+  try {
+    const { vendorId } = req.query;
+    const query = {
+      isActive: true,
+      validUntil: { $gt: new Date() }
+    };
+    
+    if (vendorId) {
+      query.$or = [{ vendorId: null }, { vendorId }];
+    } else {
+      query.vendorId = null;
+    }
+
+    const coupons = await Coupon.find(query);
+    
+    const validCoupons = coupons.filter(c => {
+      if (c.usageLimit > 0 && c.usedCount >= c.usageLimit) return false;
+      const userUsageCount = c.usedBy.filter(id => id.toString() === req.user._id.toString()).length;
+      if (userUsageCount >= c.perUserLimit) return false;
+      return true;
+    });
+
+    res.json({ 
+      success: true, 
+      coupons: validCoupons.map(c => ({
+        _id: c._id, 
+        code: c.code, 
+        description: c.description,
+        discountType: c.discountType, 
+        discountValue: c.discountValue,
+        minOrderAmount: c.minOrderAmount, 
+        maxDiscount: c.maxDiscount
+      }))
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

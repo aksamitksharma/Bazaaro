@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { productAPI, vendorAPI } from '../services/api';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -32,6 +33,7 @@ export default function Home() {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadData();
@@ -77,10 +79,10 @@ export default function Home() {
           borderRadius: '50%', background: 'rgba(255,255,255,0.08)',
         }} />
         <h1 style={{ fontFamily: 'Poppins', fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-          Fresh from your <br />neighbourhood 🏘️
+          {t('home_welcome')}
         </h1>
         <p style={{ opacity: 0.85, fontSize: '0.95rem', marginBottom: '1.25rem' }}>
-          Compare prices from nearby vendors. Save on every order!
+          {t('home_subtitle')}
         </p>
 
         {/* Search */}
@@ -94,7 +96,7 @@ export default function Home() {
             border: 'none', outline: 'none', flex: 1, background: 'transparent',
             color: '#fff', fontSize: '0.95rem', fontFamily: 'Inter',
           }}
-            placeholder="Search for products, shops..."
+            placeholder={t('search_placeholder')}
             value={search} onChange={e => setSearch(e.target.value)}
             id="home-search"
           />
@@ -104,7 +106,7 @@ export default function Home() {
       {/* Categories */}
       <section style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <CategoryIcon style={{ color: 'var(--primary)' }} /> Categories
+          <CategoryIcon style={{ color: 'var(--primary)' }} /> {t('categories')}
         </h2>
         <motion.div variants={stagger} initial="hidden" animate="show"
           style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(85px, 1fr))', gap: '0.75rem' }}
@@ -126,7 +128,7 @@ export default function Home() {
       {/* Nearby Shops */}
       <section style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <StorefrontIcon style={{ color: 'var(--secondary)' }} /> Nearby Shops
+          <StorefrontIcon style={{ color: 'var(--secondary)' }} /> {t('nearby_shops')}
         </h2>
         {shops.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
@@ -162,8 +164,8 @@ export default function Home() {
             textAlign: 'center', color: 'var(--text-3)',
           }}>
             <StorefrontIcon style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '0.5rem' }} />
-            <p style={{ fontWeight: 600 }}>No nearby shops found</p>
-            <p style={{ fontSize: '0.85rem' }}>Run seed data to populate vendors!</p>
+            <p style={{ fontWeight: 600 }}>{t('no_shops')}</p>
+            <p style={{ fontSize: '0.85rem' }}>{t('run_seed')}</p>
           </div>
         )}
       </section>
@@ -171,7 +173,7 @@ export default function Home() {
       {/* Trending Products */}
       <section style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <TrendingUpIcon style={{ color: 'var(--accent)' }} /> Trending Products
+          <TrendingUpIcon style={{ color: 'var(--accent)' }} /> {t('trending')}
         </h2>
         {(search ? filteredProducts : products).length > 0 ? (
           <motion.div variants={stagger} initial="hidden" animate="show"
@@ -181,28 +183,22 @@ export default function Home() {
               <motion.div key={p._id} variants={fadeUp} whileHover={{ y: -4, boxShadow: 'var(--shadow-lg)' }}
                 style={card}
               >
-                <div style={{
-                  height: 110, background: 'var(--surface-2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  position: 'relative',
-                }}>
+                <Link to={`/product/${p._id}`} style={{ display: 'block', height: 140, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                   {p.images?.[0] ? (
                     <img src={p.images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <span style={{ fontSize: '2.5rem', opacity: 0.3 }}>📦</span>
-                  )}
-                  {p.discount > 0 && (
-                    <span style={{
-                      position: 'absolute', top: 8, right: 8, background: 'var(--danger)',
-                      color: '#fff', fontSize: '0.65rem', fontWeight: 700,
-                      padding: '0.15rem 0.5rem', borderRadius: 999,
-                    }}>
-                      {p.discount}% OFF
+                  ) : <span style={{ fontSize: '3rem', opacity: 0.3 }}>📦</span>}
+
+                  {p.mrp > p.price && (
+                    <span style={{ position: 'absolute', top: 8, right: 8, background: 'var(--danger)', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '0.2rem 0.5rem', borderRadius: 999 }}>
+                      {Math.round(((p.mrp - p.price) / p.mrp) * 100)}% OFF
                     </span>
                   )}
-                </div>
-                <div style={{ padding: '0.75rem' }}>
-                  <p style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>{p.name}</p>
+                </Link>
+
+                <div style={{ padding: '1rem' }}>
+                  <Link to={`/product/${p._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <p style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem' }}>{p.name}</p>
+                  </Link>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ fontWeight: 800, color: 'var(--secondary)' }}>₹{p.price}</span>
                     {p.mrp > p.price && (

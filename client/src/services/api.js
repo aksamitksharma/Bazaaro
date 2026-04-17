@@ -45,6 +45,7 @@ export const productAPI = {
   delete: (id) => API.delete(`/products/${id}`),
   getMyProducts: (params) => API.get('/products/vendor/my', { params }),
   bulkUpload: (data) => API.post('/products/bulk-upload', data),
+  getCheapestCombo: (data) => API.post('/products/cheapest-combo', data),
 };
 
 // Vendors
@@ -55,11 +56,15 @@ export const vendorAPI = {
   toggleShop: () => API.put('/vendors/toggle'),
   getDashboard: () => API.get('/vendors/dashboard'),
   getAnalytics: () => API.get('/vendors/analytics'),
+  getDemand: () => API.get('/vendors/ai/demand'),
+  getPricing: () => API.get('/vendors/ai/pricing'),
 };
 
 // Orders
 export const orderAPI = {
   place: (data) => API.post('/orders', data),
+  validateCoupon: (data) => API.post('/orders/validate-coupon', data),
+  getAvailableCoupons: (params) => API.get('/orders/coupons', { params }),
   getAll: (params) => API.get('/orders', { params }),
   getOne: (id) => API.get(`/orders/${id}`),
   updateStatus: (id, data) => API.put(`/orders/${id}/status`, data),
@@ -96,10 +101,11 @@ export const adminAPI = {
   getDashboard: () => API.get('/admin/dashboard'),
   getUsers: (params) => API.get('/admin/users', { params }),
   toggleUser: (id) => API.put(`/admin/users/${id}/toggle`),
-  getPendingVendors: () => API.get('/admin/vendors/pending'),
+  getVendors: () => API.get('/admin/vendors'),
   approveVendor: (id, data) => API.put(`/admin/vendors/${id}/approve`, data),
   getOrders: (params) => API.get('/admin/orders', { params }),
   assignDelivery: (data) => API.post('/admin/orders/assign-delivery', data),
+  getDeliveryPartners: () => API.get('/admin/delivery-partners'),
   getCoupons: () => API.get('/admin/coupons'),
   createCoupon: (data) => API.post('/admin/coupons', data),
   getCategories: () => API.get('/admin/categories'),

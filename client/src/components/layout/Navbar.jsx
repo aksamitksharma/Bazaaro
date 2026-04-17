@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { logout } from '../../store/slices/authSlice';
 import { selectCartCount } from '../../store/slices/cartSlice';
+import { useTranslation } from 'react-i18next';
 import MenuIcon from '@mui/icons-material/Menu';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PersonIcon from '@mui/icons-material/Person';
@@ -91,6 +92,12 @@ export default function Navbar({ onToggleSidebar }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const { i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'hi' ? 'en' : 'hi';
+    i18n.changeLanguage(newLang);
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -153,6 +160,10 @@ export default function Navbar({ onToggleSidebar }) {
 
         {/* Right: Cart + User */}
         <div style={styles.right}>
+          <button style={{ ...styles.iconBtn, fontSize: '0.9rem', fontWeight: 700 }} onClick={toggleLanguage}>
+            {i18n.language === 'hi' ? 'EN' : 'HI'}
+          </button>
+          
           {isAuthenticated && <NotificationPanel />}
           {(!user || user.role === 'customer') && (
             <button style={styles.iconBtn} onClick={() => navigate('/cart')}>

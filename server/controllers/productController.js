@@ -4,6 +4,7 @@ const Category = require('../models/Category');
 const { paginate, calculateDistance } = require('../utils/helpers');
 const csv = require('csv-parser');
 const fs = require('fs');
+const aiEngine = require('../services/aiEngine');
 
 // @desc    Get all products (with filters)
 // @route   GET /api/products
@@ -362,6 +363,19 @@ exports.getMyProducts = async (req, res) => {
       products,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) }
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get AI Combo suggestions
+// @route   POST /api/products/cheapest-combo
+exports.getCheapestCombo = async (req, res) => {
+  try {
+    const { items, location } = req.body;
+    if(!items || items.length === 0) return res.json({ success: true, combos: [] });
+    const combos = await aiEngine.getCheapestCombo(items, location);
+    res.json({ success: true, combos });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

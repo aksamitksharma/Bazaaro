@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
-import { vendorAPI, productAPI } from '../services/api';
+import { vendorAPI, productAPI, reviewAPI } from '../services/api';
 import { addToCart } from '../store/slices/cartSlice';
 import toast from 'react-hot-toast';
 import StorefrontIcon from '@mui/icons-material/Storefront';
@@ -11,11 +11,14 @@ import StarIcon from '@mui/icons-material/Star';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CircleIcon from '@mui/icons-material/Circle';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import PersonIcon from '@mui/icons-material/Person';
 
 export default function ShopPage() {
   const { id } = useParams();
   const [vendor, setVendor] = useState(null);
   const [products, setProducts] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
 
@@ -25,12 +28,14 @@ export default function ShopPage() {
 
   const loadShop = async () => {
     try {
-      const [vRes, pRes] = await Promise.all([
+      const [vRes, pRes, rRes] = await Promise.all([
         vendorAPI.getOne(id),
         productAPI.getAll({ vendor: id }),
+        reviewAPI.getVendorReviews(id).catch(() => ({ data: { reviews: [] } })),
       ]);
       setVendor(vRes.data.vendor);
       setProducts(pRes.data.products || []);
+      setReviews(rRes.data.reviews || []);
     } catch (err) {
       toast.error('Failed to load shop');
     }
@@ -109,26 +114,20 @@ export default function ShopPage() {
                 boxShadow: 'var(--shadow)', transition: '0.25s',
               }}
             >
-              <div style={{
-                height: 120, background: 'var(--surface-2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                position: 'relative',
-              }}>
-                {p.images?.[0] ? (
-                  <img src={p.images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <span style={{ fontSize: '2.5rem', opacity: 0.3 }}>📦</span>
-                )}
-                {!p.isAvailable && (
-                  <div style={{
-                    position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff', fontWeight: 700, fontSize: '0.85rem',
-                  }}>Out of Stock</div>
-                )}
-              </div>
-              <div style={{ padding: '0.75rem' }}>
-                <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.15rem' }}>{p.name}</p>
+                <Link to={`/product/${p._id}`} style={{ display: 'block', height: 120, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  {p.images?.[0] ? (
+                    <img src={p.images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ fontSize: '2.5rem', opacity: 0.3 }}>📦</span>
+                  )}
+                  {!p.isAvailable && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>Out of Stock</div>
+                  )}
+                </Link>
+                <div style={{ padding: '0.75rem' }}>
+                  <Link to={`/product/${p._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.15rem' }}>{p.name}</p>
+                  </Link>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '0.5rem' }}>
                   {p.unit} • Stock: {p.stock}
                 </p>
@@ -166,6 +165,40 @@ export default function ShopPage() {
           <p style={{ fontWeight: 600 }}>No products listed yet</p>
         </div>
       )}
+
+      {/* Reviews Section */}
+      <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '2rem 0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <StarIcon style={{ color: '#F59E0B' }} /> Shop Reviews ({reviews.length})
+      </h2>
+      <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow)', padding: '1.5rem', marginBottom: '2rem' }}>
+        {reviews.length > 0 ? (
+          reviews.map((r, i) => (
+            <div key={r._id || i} style={{ borderBottom: i !== reviews.length - 1 ? '1px solid var(--surface-2)' : 'none', paddingBottom: i !== reviews.length - 1 ? '1rem' : 0, marginBottom: i !== reviews.length - 1 ? '1rem' : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--gradient-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                  <PersonIcon style={{ fontSize: '1rem' }} />
+                </div>
+                <div>
+                  <p style={{ fontWeight: 600, fontSize: '0.85rem' }}>{r.userId?.name || 'Customer'}</p>
+                  <div style={{ display: 'flex', color: '#F59E0B' }}>
+                    {[1, 2, 3, 4, 5].map(n => n <= r.rating ? <StarIcon key={n} style={{ fontSize: '0.85rem' }} /> : <StarBorderIcon key={n} style={{ fontSize: '0.85rem', opacity: 0.3 }} />)}
+                  </div>
+                </div>
+              </div>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-2)' }}>{r.comment}</p>
+              {r.reply && (
+                <div style={{ marginTop: '0.5rem', padding: '0.6rem 0.8rem', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}>
+                  <p style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--primary-light)', marginBottom: '0.15rem' }}>Vendor Reply</p>
+                  <p style={{ color: 'var(--text-2)' }}>{r.reply}</p>
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <p style={{ color: 'var(--text-3)', textAlign: 'center', padding: '1rem 0' }}>No reviews yet for this shop.</p>
+        )}
+      </div>
+
     </div>
   );
 }

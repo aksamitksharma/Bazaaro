@@ -91,11 +91,14 @@ export default function AdminCoupons() {
     if (!form.code || !form.value) return toast.error('Code and value required');
     try {
       const { data } = await adminAPI.createCoupon({
-        ...form,
-        value: parseFloat(form.value),
-        minOrder: form.minOrder ? parseFloat(form.minOrder) : 0,
+        code: form.code,
+        discountType: form.type,
+        description: form.description,
+        discountValue: parseFloat(form.value),
+        minOrderAmount: form.minOrder ? parseFloat(form.minOrder) : 0,
         maxDiscount: form.maxDiscount ? parseFloat(form.maxDiscount) : undefined,
         usageLimit: form.usageLimit ? parseInt(form.usageLimit) : undefined,
+        validUntil: form.expiryDate ? new Date(form.expiryDate) : undefined,
       });
       setCoupons(prev => [data.coupon, ...prev]);
       setShowModal(false);
@@ -134,7 +137,7 @@ export default function AdminCoupons() {
                 <div>
                   <p style={s.code}>{c.code}</p>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginTop: '0.25rem' }}>
-                    {c.type === 'percentage' ? `${c.value}% off` : `₹${c.value} flat off`}
+                    {c.discountType === 'percentage' ? `${c.discountValue}% off` : `₹${c.discountValue} flat off`}
                   </p>
                 </div>
                 <span style={{
@@ -150,10 +153,10 @@ export default function AdminCoupons() {
               )}
               <div style={s.meta}>
                 <span style={s.metaTag}>
-                  <CalendarTodayIcon style={{ fontSize: '0.75rem' }} /> {formatDate(c.expiryDate)}
+                  <CalendarTodayIcon style={{ fontSize: '0.75rem' }} /> {formatDate(c.validUntil)}
                 </span>
-                {c.minOrder > 0 && (
-                  <span style={s.metaTag}>Min ₹{c.minOrder}</span>
+                {c.minOrderAmount > 0 && (
+                  <span style={s.metaTag}>Min ₹{c.minOrderAmount}</span>
                 )}
                 {c.maxDiscount && (
                   <span style={s.metaTag}>Max ₹{c.maxDiscount}</span>

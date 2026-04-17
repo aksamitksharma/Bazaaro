@@ -6,16 +6,32 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
+  const [deliveryPartners, setDeliveryPartners] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadOrders(); }, []);
 
   const loadOrders = async () => {
     try {
-      const { data } = await adminAPI.getOrders();
-      setOrders(data.orders || []);
+      const [ordersRes, dpRes] = await Promise.all([
+        adminAPI.getOrders(),
+        adminAPI.getDeliveryPartners()
+      ]);
+      setOrders(ordersRes.data.orders || []);
+      setDeliveryPartners(dpRes.data.partners || []);
     } catch { }
     setLoading(false);
+  };
+
+  const handleAssignDelivery = async (orderId, dpId) => {
+    if (!dpId) return;
+    try {
+      await adminAPI.assignDelivery({ orderId, deliveryPartnerId: dpId });
+      toast.success('Delivery assigned successfully!');
+      loadOrders();
+    } catch {
+      toast.error('Failed to assign delivery');
+    }
   };
 
   return (
@@ -31,17 +47,17 @@ export default function AdminOrders() {
       ) : (
         <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
           <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr 0.8fr 0.8fr 0.6fr',
+            display: 'grid', gridTemplateColumns: '1fr 1fr 0.8fr 1fr 0.8fr 0.6fr',
             padding: '0.85rem 1.25rem', background: 'var(--surface-2)',
             fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.05em',
           }}>
-            <span>Order #</span><span>Customer</span><span>Status</span><span>Total</span><span>Date</span>
+            <span>Order #</span><span>Customer</span><span>Status</span><span>Delivery</span><span>Total</span><span>Date</span>
           </div>
           {orders.map((o, i) => (
             <motion.div key={o._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               transition={{ delay: i * 0.03 }}
               style={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr 0.8fr 0.8fr 0.6fr',
+                display: 'grid', gridTemplateColumns: '1fr 1fr 0.8fr 1fr 0.8fr 0.6fr',
                 padding: '0.85rem 1.25rem', alignItems: 'center',
                 borderBottom: '1px solid var(--border)', fontSize: '0.85rem',
               }}>
@@ -53,6 +69,26 @@ export default function AdminOrders() {
               }}>
                 {o.orderStatus?.replace('_', ' ')}
               </span>
+              
+              <span style={{ fontSize: '0.8rem' }}>
+                {o.deliveryPartnerId ? (
+                  <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>Assigned</span>
+                ) : o.orderStatus === 'ready' ? (
+                  <select 
+                    onChange={(e) => handleAssignDelivery(o._id, e.target.value)}
+                    defaultValue=""
+                    style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                  >
+                    <option value="" disabled>Assign...</option>
+                    {deliveryPartners.map(dp => (
+                      <option key={dp._id} value={dp._id}>{dp.userId?.name || 'Partner'}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span style={{ color: 'var(--text-3)' }}>—</span>
+                )}
+              </span>
+
               <span style={{ fontWeight: 700, color: 'var(--secondary)' }}>₹{o.total?.toFixed(0)}</span>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>
                 {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}

@@ -6,6 +6,8 @@ import toast from 'react-hot-toast';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import RateReviewIcon from '@mui/icons-material/RateReview';
+import ReviewForm from '../components/common/ReviewForm';
 
 const statusColors = {
   placed: '#3B82F6', confirmed: '#6366F1', preparing: '#D97706', ready: '#059669',
@@ -15,6 +17,7 @@ const statusColors = {
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reviewOrder, setReviewOrder] = useState(null);
 
   useEffect(() => {
     loadOrders();
@@ -60,7 +63,7 @@ export default function Orders() {
                 </div>
                 <span className={`status-${order.orderStatus}`}
                   style={{ padding: '0.25rem 0.75rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 700, textTransform: 'capitalize' }}>
-                  {order.orderStatus?.replace('_', ' ')}
+                  {(order.orderStatus || 'placed').replace('_', ' ')}
                 </span>
               </div>
 
@@ -68,17 +71,44 @@ export default function Orders() {
                 {order.items?.length} item{order.items?.length !== 1 ? 's' : ''} • ₹{order.total?.toFixed(0)}
               </p>
 
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
                 {!['delivered', 'cancelled'].includes(order.orderStatus) && (
                   <Link to={`/orders/${order._id}/track`}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '0.25rem',
-                      fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-light)',
+                      fontSize: '0.8rem', fontWeight: 600, color: '#fff',
+                      background: 'var(--primary)', padding: '0.4rem 0.8rem', borderRadius: 'var(--radius)'
                     }}>
                     <LocalShippingIcon style={{ fontSize: '0.9rem' }} /> Track Order
                   </Link>
                 )}
+                {order.orderStatus === 'delivered' && !order.isReviewed && (
+                  <button 
+                    onClick={() => setReviewOrder(reviewOrder === order._id ? null : order._id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.25rem',
+                      fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent)',
+                      background: '#FFFBEB', padding: '0.4rem 0.8rem', borderRadius: 'var(--radius)',
+                      border: '1px solid #FDE68A', cursor: 'pointer'
+                    }}>
+                    <RateReviewIcon style={{ fontSize: '0.9rem' }} /> 
+                    {reviewOrder === order._id ? 'Cancel Review' : 'Leave Review'}
+                  </button>
+                )}
               </div>
+              
+              {reviewOrder === order._id && (
+                <div style={{ marginTop: '1.25rem' }}>
+                  <ReviewForm 
+                    vendorId={order.vendorId?._id || order.vendorId} 
+                    orderId={order._id}
+                    onReviewSubmitted={() => {
+                        setReviewOrder(null);
+                        setOrders(orders.map(o => o._id === order._id ? {...o, isReviewed: true} : o));
+                    }} 
+                  />
+                </div>
+              )}
             </motion.div>
           ))}
         </div>

@@ -77,11 +77,11 @@ const seed = async () => {
     // Create customers
     console.log('👥 Creating customers...');
     const customers = [];
-    const customerNames = ['Rahul Sharma', 'Priya Patel', 'Amit Kumar', 'Sneha Gupta', 'Vikram Singh'];
-    for (let i = 0; i < 5; i++) {
+    const customerNames = ['Rahul Customer', 'Priya Customer'];
+    for (let i = 0; i < 2; i++) {
       const loc = locations[i];
       customers.push(await User.create({
-        name: customerNames[i], phone: `98000000${10 + i}`,
+        name: customerNames[i], phone: `980000000${i}`,
         password: 'user123', role: 'customer', isVerified: true,
         address: { street: loc.area, city: 'Delhi', state: 'Delhi', pincode: '110001',
           coordinates: { lat: loc.lat, lng: loc.lng } }
@@ -91,18 +91,15 @@ const seed = async () => {
     // Create vendors
     console.log('🏪 Creating vendors...');
     const vendorData = [
-      { name: 'Ramesh Kirana', shop: 'Ramesh General Store', cat: 'general', phone: '98100000' },
-      { name: 'Suresh Chaiwala', shop: 'Suresh Tea & Snacks', cat: 'food', phone: '98100001' },
-      { name: 'Meena Fruits', shop: 'Fresh Fruit Corner', cat: 'general', phone: '98100002' },
-      { name: 'Pappu Bakery', shop: 'Pappu Fresh Bakery', cat: 'food', phone: '98100003' },
-      { name: 'Sharma Electronics', shop: 'Quick Fix Electronics', cat: 'general', phone: '98100004' }
+      { name: 'Ramesh Kirana', shop: 'Ramesh General Store', cat: 'general', phone: '9700000000' },
+      { name: 'Suresh Chaiwala', shop: 'Suresh Tea & Snacks', cat: 'food', phone: '9700000001' }
     ];
 
     const vendors = [];
     for (let i = 0; i < vendorData.length; i++) {
       const loc = locations[i];
       const user = await User.create({
-        name: vendorData[i].name, phone: vendorData[i].phone + '01',
+        name: vendorData[i].name, phone: vendorData[i].phone,
         password: 'vendor123', role: 'vendor', isVerified: true,
         address: { street: loc.area, city: 'Delhi', state: 'Delhi', pincode: '110001',
           coordinates: { lat: loc.lat, lng: loc.lng } }
@@ -162,11 +159,11 @@ const seed = async () => {
 
     // Create delivery partners
     console.log('🚚 Creating delivery partners...');
-    const dpNames = ['Raju Driver', 'Sonu Delivery', 'Karan Rider'];
-    for (let i = 0; i < 3; i++) {
+    const dpNames = ['Raju Driver', 'Sonu Delivery'];
+    for (let i = 0; i < 2; i++) {
       const loc = locations[i + 3];
       const user = await User.create({
-        name: dpNames[i], phone: `97000000${10 + i}`, password: 'delivery123',
+        name: dpNames[i], phone: `960000000${i}`, password: 'delivery123',
         role: 'delivery', isVerified: true,
         address: { street: loc.area, city: 'Delhi', state: 'Delhi', pincode: '110001',
           coordinates: { lat: loc.lat, lng: loc.lng } }
@@ -181,9 +178,9 @@ const seed = async () => {
     const totalProducts = await Product.countDocuments();
     console.log(`\n✅ Seed complete!`);
     console.log(`   👑 Admin: phone=9999999999, pass=admin123`);
-    console.log(`   👥 Customers: phone=9800000010-14, pass=user123`);
-    console.log(`   🏪 Vendors: phone=981000000x01, pass=vendor123`);
-    console.log(`   🚚 Delivery: phone=9700000010-12, pass=delivery123`);
+    console.log(`   👥 Customers: 9800000000 aur 9800000001, pass=user123`);
+    console.log(`   🏪 Vendors: 9700000000 aur 9700000001, pass=vendor123`);
+    console.log(`   🚚 Delivery: 9600000000 aur 9600000001, pass=delivery123`);
     console.log(`   📦 Products: ${totalProducts}`);
     console.log(`   📂 Categories: ${cats.length}\n`);
 

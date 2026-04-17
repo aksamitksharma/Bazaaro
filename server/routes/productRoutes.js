@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { getProducts, getNearbyProducts, compareProducts, getProduct, createProduct, updateProduct, deleteProduct, bulkUpload, getMyProducts } = require('../controllers/productController');
+const { getProducts, getNearbyProducts, compareProducts, getProduct, createProduct, updateProduct, deleteProduct, bulkUpload, getMyProducts, getCheapestCombo } = require('../controllers/productController');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadImage, uploadCSV } = require('../middleware/upload');
 
@@ -12,5 +12,6 @@ router.post('/', protect, authorize('vendor'), uploadImage.array('images', 5), c
 router.put('/:id', protect, authorize('vendor'), updateProduct);
 router.delete('/:id', protect, authorize('vendor'), deleteProduct);
 router.post('/bulk-upload', protect, authorize('vendor'), uploadCSV.single('file'), bulkUpload);
+router.post('/cheapest-combo', getCheapestCombo);
 
 module.exports = router;

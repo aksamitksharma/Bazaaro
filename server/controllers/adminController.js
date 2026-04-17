@@ -65,9 +65,9 @@ exports.toggleUser = async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
 
-exports.getPendingVendors = async (req, res) => {
+exports.getVendors = async (req, res) => {
   try {
-    const vendors = await Vendor.find({ isApproved: false }).populate('userId', 'name phone email');
+    const vendors = await Vendor.find({}).populate('userId', 'name phone email');
     res.json({ success: true, vendors });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
@@ -108,6 +108,13 @@ exports.assignDelivery = async (req, res) => {
     await order.save();
     dp.isAvailable = false; dp.currentOrderId = order._id; await dp.save();
     res.json({ success: true, order });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+};
+
+exports.getDeliveryPartners = async (req, res) => {
+  try {
+    const partners = await DeliveryPartner.find({ isOnline: true, isAvailable: true }).populate('userId', 'name phone');
+    res.json({ success: true, partners });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
 

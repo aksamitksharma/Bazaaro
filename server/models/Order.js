@@ -57,8 +57,8 @@ const orderSchema = new mongoose.Schema({
   vendorRating: { type: Number }
 }, { timestamps: true });
 
-// Auto-generate order number
-orderSchema.pre('save', function(next) {
+// Auto-generate order number before validation
+orderSchema.pre('validate', function(next) {
   if (this.isNew && !this.orderNumber) {
     this.orderNumber = 'BZR' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
   }

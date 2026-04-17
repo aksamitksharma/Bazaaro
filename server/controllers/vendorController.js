@@ -3,6 +3,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const { calculateDistance, paginate } = require('../utils/helpers');
+const aiEngine = require('../services/aiEngine');
 
 // @desc    Get nearby vendors
 // @route   GET /api/vendors/nearby
@@ -234,6 +235,34 @@ exports.getAnalytics = async (req, res) => {
       success: true,
       analytics: { dailyEarnings, categoryBreakdown, orderStatusBreakdown }
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get AI Demand Predictions
+// @route   GET /api/vendors/ai/demand
+exports.getDemandPredictions = async (req, res) => {
+  try {
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if(!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    
+    const predictions = await aiEngine.getDemandPrediction(vendor._id);
+    res.json({ success: true, predictions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get AI Price Suggestions
+// @route   GET /api/vendors/ai/pricing
+exports.getPriceSuggestions = async (req, res) => {
+  try {
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if(!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    
+    const suggestions = await aiEngine.getPriceSuggestions(vendor._id);
+    res.json({ success: true, suggestions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

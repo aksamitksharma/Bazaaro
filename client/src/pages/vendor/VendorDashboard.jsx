@@ -9,6 +9,7 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ToggleOffIcon from '@mui/icons-material/ToggleOff';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const statCard = (bg, icon, label, value) => (
   <motion.div whileHover={{ y: -3 }}
@@ -31,14 +32,22 @@ export default function VendorDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [demand, setDemand] = useState([]);
+  const [pricing, setPricing] = useState([]);
 
   useEffect(() => { loadDash(); }, []);
 
   const loadDash = async () => {
     try {
-      const { data } = await vendorAPI.getDashboard();
-      setDashboard(data);
-      setIsOpen(data.vendor?.isOpen || false);
+      const [dashRes, dRes, pRes] = await Promise.all([
+        vendorAPI.getDashboard(),
+        vendorAPI.getDemand().catch(() => ({ data: { predictions: [] } })),
+        vendorAPI.getPricing().catch(() => ({ data: { suggestions: [] } }))
+      ]);
+      setDashboard(dashRes.data);
+      setIsOpen(dashRes.data.vendor?.isOpen || false);
+      setDemand(dRes.data?.predictions || []);
+      setPricing(pRes.data?.suggestions || []);
     } catch {
       // fallback
     }
@@ -86,6 +95,29 @@ export default function VendorDashboard() {
         {statCard('var(--gradient-3)', <PendingActionsIcon />, 'Pending Orders', stats.pendingOrders || 0)}
         {statCard('linear-gradient(135deg, #6366F1, #8B5CF6)', <TrendingUpIcon />, 'Total Orders', stats.totalOrders || 0)}
       </div>
+
+      {/* AI Insights Section */}
+      {(demand.length > 0 || pricing.length > 0) && (
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AutoAwesomeIcon style={{ color: '#8B5CF6' }} /> AI Business Insights
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+            {demand.map(d => (
+              <div key={d.productId} style={{ background: '#FFF1F2', borderLeft: '4px solid var(--danger)', padding: '1rem', borderRadius: '0 var(--radius) var(--radius) 0', boxShadow: 'var(--shadow-sm)' }}>
+                <p style={{ fontWeight: 800, color: 'var(--danger)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Stock {d.urgency} - {d.name}</p>
+                <p style={{ fontSize: '0.85rem' }}>{d.message}</p>
+              </div>
+            ))}
+            {pricing.map(p => (
+              <div key={p.productId} style={{ background: '#ECFDF5', borderLeft: '4px solid var(--secondary)', padding: '1rem', borderRadius: '0 var(--radius) var(--radius) 0', boxShadow: 'var(--shadow-sm)' }}>
+                <p style={{ fontWeight: 800, color: 'var(--secondary)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Price Optimiser - {p.name}</p>
+                <p style={{ fontSize: '0.85rem' }}>{p.suggestion}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Orders */}
       <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>Recent Orders</h2>
