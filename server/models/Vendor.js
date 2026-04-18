@@ -18,6 +18,7 @@ const vendorSchema = new mongoose.Schema({
   },
   isApproved: { type: Boolean, default: false },
   isOpen: { type: Boolean, default: false },
+  isSellFastMode: { type: Boolean, default: false }, // Game Changer feature
   rating: { type: Number, default: 0 },
   totalReviews: { type: Number, default: 0 },
   totalOrders: { type: Number, default: 0 },

@@ -132,6 +132,47 @@ export default function Home() {
         </motion.div>
       </section>
 
+      {/* Flash Sell Fast Clearance */}
+      {products.some(p => p.isFlashDeal) && (
+        <section style={{ marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#DC2626' }}>
+            🔥 Flash Clearance (Sell Fast)
+          </h2>
+          <motion.div variants={stagger} initial="hidden" animate="show"
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}
+          >
+            {products.filter(p => p.isFlashDeal).map(p => (
+              <motion.div key={p._id} variants={fadeUp} whileHover={{ y: -4, boxShadow: '0 10px 25px rgba(220, 38, 38, 0.2)' }}
+                style={{ ...card, border: '2px solid #FECACA', background: '#FEF2F2' }}
+              >
+                <Link to={`/product/${p._id}`} style={{ display: 'block', height: 140, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  {p.images?.[0] ? (
+                    <img src={p.images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : <span style={{ fontSize: '3rem', opacity: 0.3 }}>📦</span>}
+
+                  <span style={{ position: 'absolute', top: 8, right: 8, background: '#EF4444', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '0.2rem 0.5rem', borderRadius: 999, boxShadow: '0 2px 10px rgba(239, 68, 68, 0.5)' }}>
+                    CLEARANCE -30%
+                  </span>
+                </Link>
+
+                <div style={{ padding: '1rem' }}>
+                  <Link to={`/product/${p._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <p style={{ fontWeight: 800, color: '#991B1B', fontSize: '0.95rem', marginBottom: '0.25rem' }}>{p.name}</p>
+                  </Link>
+                  <p style={{ fontSize: '0.75rem', color: '#B91C1C', marginBottom: '0.5rem' }}>By {p.vendorId?.shopName}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontWeight: 900, color: '#DC2626', fontSize: '1.2rem' }}>₹{p.price}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-3)', textDecoration: 'line-through' }}>
+                      ₹{p.originalPrice}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </section>
+      )}
+
       {/* Nearby Shops */}
       <section style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

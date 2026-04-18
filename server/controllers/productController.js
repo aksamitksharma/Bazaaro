@@ -37,15 +37,25 @@ exports.getProducts = async (req, res) => {
 
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)
-      .populate('vendorId', 'shopName address rating isOpen')
+      .populate('vendorId', 'shopName address rating isOpen isSellFastMode')
       .populate('category', 'name icon')
       .sort(sortObj)
       .skip(skip)
       .limit(limit);
 
+    const mappedProducts = products.map(p => {
+      const prod = p.toObject();
+      if (prod.vendorId?.isSellFastMode) {
+         prod.originalPrice = prod.price;
+         prod.price = Math.floor(prod.price * 0.7);
+         prod.isFlashDeal = true;
+      }
+      return prod;
+    });
+
     res.json({
       success: true,
-      products,
+      products: mappedProducts,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) }
     });
   } catch (error) {
@@ -84,14 +94,25 @@ exports.getNearbyProducts = async (req, res) => {
 
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)
-      .populate('vendorId', 'shopName address rating isOpen')
+      .populate('vendorId', 'shopName address rating isOpen isSellFastMode')
       .populate('category', 'name icon')
       .skip(skip)
       .limit(limit);
 
+    // Dynamic Sell Fast 30% Discount Pipeline
+    const mappedProducts = products.map(p => {
+      const prod = p.toObject();
+      if (prod.vendorId?.isSellFastMode) {
+         prod.originalPrice = prod.price;
+         prod.price = Math.floor(prod.price * 0.7); // 30% OFF
+         prod.isFlashDeal = true;
+      }
+      return prod;
+    });
+
     res.json({
       success: true,
-      products,
+      products: mappedProducts,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) }
     });
   } catch (error) {

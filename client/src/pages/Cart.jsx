@@ -12,6 +12,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const qtyBtn = {
   width: 30, height: 30, borderRadius: '50%', border: '1.5px solid var(--border)',
@@ -31,13 +32,16 @@ export default function Cart() {
   const [couponDiscount, setCouponDiscount] = React.useState(0);
   const [applying, setApplying] = React.useState(false);
   const [availableCoupons, setAvailableCoupons] = React.useState([]);
+  const [acceptedCombo, setAcceptedCombo] = React.useState(null);
 
   React.useEffect(() => {
     if (items.length > 0) {
       productAPI.getCheapestCombo({ items }).then(res => {
         if (res.data?.combos?.length > 0) {
           const best = res.data.combos[0];
-          if (best.vendorId !== vendorId && best.finalEstimatedCost < (total + 30)) {
+          if (best.type === 'split' && best.finalEstimatedCost < (total + 30)) {
+            setComboAlert(best);
+          } else if (best.type === 'single' && best.vendorId !== vendorId && best.finalEstimatedCost < (total + 30)) {
             setComboAlert(best);
           } else {
             setComboAlert(null);
@@ -46,6 +50,7 @@ export default function Cart() {
       }).catch(() => {});
     } else {
       setComboAlert(null);
+      setAcceptedCombo(null);
     }
   }, [items, vendorId, total]);
 
@@ -93,20 +98,72 @@ export default function Cart() {
   };
 
   const handleCheckout = async () => {
+    if (!user) return toast.error('Please login first');
+    
+    let isSuccess = false;
     try {
-      const { data } = await orderAPI.place({
-        vendorId,
-        items: items.map(i => ({
-          productId: i.productId, name: i.name, price: i.price,
-          quantity: i.quantity, image: i.image,
-        })),
-        paymentMethod: 'cod',
-        couponCode: appliedCoupon || undefined,
-        deliveryAddress: user?.address || { street: 'Default Address', city: 'Local', coordinates: { lat: 28.6, lng: 77.2 } },
-      });
-      dispatch(clearCart());
-      toast.success('Order placed! 🎉');
-      navigate('/orders');
+      if (acceptedCombo) {
+        if (acceptedCombo.type === 'split') {
+          // Group products by vendor
+          const vendorGroups = {};
+          acceptedCombo.matchedProducts.forEach(p => {
+             const vId = p.vendorId._id || p.vendorId;
+             if(!vendorGroups[vId]) vendorGroups[vId] = [];
+             vendorGroups[vId].push(p);
+          });
+          
+          for (const [vId, vItems] of Object.entries(vendorGroups)) {
+             await orderAPI.place({
+               vendorId: vId,
+               items: vItems.map(i => ({
+                 productId: i._id, name: i.name, price: i.price,
+                 quantity: i.quantity, image: i.images?.[0] || i.image,
+               })),
+               paymentMethod: 'cod',
+               deliveryAddress: user.address,
+             });
+          }
+          isSuccess = true;
+        } else {
+           await orderAPI.place({
+               vendorId: acceptedCombo.vendorId,
+               items: acceptedCombo.matchedProducts.map(i => ({
+                 productId: i._id, name: i.name, price: i.price,
+                 quantity: i.quantity, image: i.images?.[0] || i.image,
+               })),
+               paymentMethod: 'cod',
+               deliveryAddress: user.address,
+           });
+           isSuccess = true;
+        }
+      } else {
+        const vendorGroups = {};
+        items.forEach(i => {
+           const vId = i.vendorId || vendorId;
+           if (!vendorGroups[vId]) vendorGroups[vId] = [];
+           vendorGroups[vId].push(i);
+        });
+
+        for (const [vId, vItems] of Object.entries(vendorGroups)) {
+          await orderAPI.place({
+            vendorId: vId,
+            items: vItems.map(i => ({
+              productId: i.productId, name: i.name, price: i.price,
+              quantity: i.quantity, image: i.image,
+            })),
+            paymentMethod: 'cod',
+            couponCode: appliedCoupon || undefined,
+            deliveryAddress: user?.address || { street: 'Default Address', city: 'Local', coordinates: { lat: 28.6, lng: 77.2 } },
+          });
+        }
+        isSuccess = true;
+      }
+      
+      if (isSuccess) {
+        dispatch(clearCart());
+        toast.success('Order placed! 🎉');
+        navigate('/orders');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Checkout failed');
     }
@@ -138,21 +195,41 @@ export default function Cart() {
         <StorefrontIcon style={{ fontSize: '0.9rem' }} /> {vendorName}
       </p>
 
-      {comboAlert && (
+      {comboAlert && !acceptedCombo && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
           style={{
-            background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
-            color: '#fff', padding: '1rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.5rem',
-            display: 'flex', alignItems: 'start', gap: '0.75rem', boxShadow: 'var(--shadow-md)'
+            background: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
+            color: '#fff', padding: '1.25rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.5rem',
+            boxShadow: 'var(--shadow-md)', border: '2px solid #34D399'
           }}
         >
-          <AutoAwesomeIcon style={{ color: '#FCD34D' }} />
-          <div>
-            <p style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: '0.2rem' }}>AI Savings Alert!</p>
-            <p style={{ fontSize: '0.85rem', opacity: 0.9 }}>
-              You can get this exact same basket from <strong>{comboAlert.shopName}</strong> for only ₹{comboAlert.finalEstimatedCost.toFixed(0)} (including delivery).
-            </p>
+          <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <AutoAwesomeIcon style={{ color: '#FCD34D', fontSize: '1.8rem' }} />
+            <div>
+              <p style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '0.2rem' }}>Magic Combo Saver 🔥</p>
+              {comboAlert.type === 'split' ? (
+                 <p style={{ fontSize: '0.85rem', opacity: 0.9 }}>
+                   Auto-split this basket across <strong>{comboAlert.vendors.map(v => v.shopName).join(' & ')}</strong> to save money! 
+                   Total estimated cost: <strong>₹{comboAlert.finalEstimatedCost.toFixed(0)}</strong>.
+                 </p>
+              ) : (
+                 <p style={{ fontSize: '0.85rem', opacity: 0.9 }}>
+                   Get this exact same basket from <strong>{comboAlert.shopName}</strong> for only <strong>₹{comboAlert.finalEstimatedCost.toFixed(0)}</strong>!
+                 </p>
+              )}
+            </div>
           </div>
+          <button onClick={() => setAcceptedCombo(comboAlert)} style={{ background: '#fff', color: '#047857', border: 'none', padding: '0.6rem 1rem', borderRadius: 999, fontWeight: 800, cursor: 'pointer', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+             Accept AI Deal & Save ₹{Math.max(0, (grandTotal - comboAlert.finalEstimatedCost)).toFixed(0)}
+          </button>
+        </motion.div>
+      )}
+      
+      {acceptedCombo && (
+        <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} style={{ background: '#ECFDF5', padding: '1rem', borderRadius: 'var(--radius)', marginBottom: '1rem', borderLeft: '4px solid #10B981' }}>
+           <p style={{ fontWeight: 700, color: '#047857', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircleIcon style={{fontSize: '1rem'}} /> AI Deal Applied!</p>
+           <p style={{ fontSize: '0.8rem', color: '#065F46', marginTop: '0.25rem' }}>You will checkout with the optimized combo cart. The original cart below is bypassed.</p>
+           <button onClick={() => setAcceptedCombo(null)} style={{ background:'transparent', border:'none', color:'#10B981', textDecoration:'underline', cursor:'pointer', marginTop:'0.5rem', fontSize:'0.75rem', padding:0 }}>Cancel AI Deal</button>
         </motion.div>
       )}
 

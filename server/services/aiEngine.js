@@ -5,53 +5,88 @@ const Order = require('../models/Order');
 // Simulate basic AI logic using heuristics
 
 /**
- * AI Cheapest Combo Suggestion
- * Takes an array of requested items (names) and finds the vendor 
- * offering the cheapest overall basket (items + delivery proxy).
+ * AI Smart Combo Splitting (Game Changer Feature)
+ * Suggests splitting the cart across multiple vendors to achieve total lowest cost.
  */
 exports.getCheapestCombo = async (requestedItems, userCoords) => {
   try {
     const itemNames = requestedItems.map(i => i.name.toLowerCase());
     
-    // Find vendors who have products matching the names
+    // Find all products matching the requested names
     const matchingProducts = await Product.find({
       name: { $in: itemNames.map(n => new RegExp(n, 'i')) },
       isAvailable: true, stock: { $gt: 0 }
     }).populate('vendorId', 'shopName address');
 
+    // 1. Calculate Single-Vendor Options
     const vendorMap = {};
     for(const prod of matchingProducts) {
       const vId = prod.vendorId._id.toString();
       if(!vendorMap[vId]) {
         vendorMap[vId] = {
-          vendorId: vId,
-          shopName: prod.vendorId.shopName,
-          totalPrice: 0,
-          matchedItemsCount: 0,
-          matchedProducts: []
+          vendorId: vId, shopName: prod.vendorId.shopName,
+          totalPrice: 0, matchedItemsCount: 0, matchedProducts: []
         };
       }
       
-      // Calculate how many requested items they fulfill
       requestedItems.forEach(req => {
         if(prod.name.toLowerCase().includes(req.name.toLowerCase())) {
           vendorMap[vId].totalPrice += prod.price * req.quantity;
           vendorMap[vId].matchedItemsCount++;
-          vendorMap[vId].matchedProducts.push(prod);
+          vendorMap[vId].matchedProducts.push({...prod.toObject(), quantity: req.quantity});
         }
       });
     }
 
-    const options = Object.values(vendorMap)
+    const singleVendorOptions = Object.values(vendorMap)
       .filter(v => v.matchedItemsCount === requestedItems.length) // Fully fulfills
-      .map(v => ({
-        ...v,
-        // Approx 30 rupees delivery as base
-        finalEstimatedCost: v.totalPrice + 30 
-      }))
-      .sort((a,b) => a.finalEstimatedCost - b.finalEstimatedCost);
+      .map(v => ({ ...v, type: 'single', finalEstimatedCost: v.totalPrice + 30 }));
 
-    return options.slice(0, 3); // Top 3 cheapest combos
+    // 2. Calculate Muli-Vendor Optimal Split
+    let splitTotalPrice = 0;
+    const splitVendorsMap = new Map();
+    const splitProducts = [];
+    const fulfilledItems = new Set();
+
+    requestedItems.forEach(req => {
+      // Find cheapest product match for this requested item
+      const optionsForThisItem = matchingProducts.filter(p => p.name.toLowerCase().includes(req.name.toLowerCase()));
+      if (optionsForThisItem.length > 0) {
+        optionsForThisItem.sort((a,b) => a.price - b.price);
+        const bestProd = optionsForThisItem[0];
+        
+        splitTotalPrice += bestProd.price * req.quantity;
+        const vIdStr = bestProd.vendorId._id.toString();
+        if(!splitVendorsMap.has(vIdStr)) {
+           splitVendorsMap.set(vIdStr, {
+              vendorId: vIdStr,
+              shopName: bestProd.vendorId.shopName
+           });
+        }
+        splitProducts.push({...bestProd.toObject(), quantity: req.quantity});
+        fulfilledItems.add(req.name);
+      }
+    });
+
+    const multiVendorOption = [];
+    if (fulfilledItems.size === requestedItems.length && splitVendorsMap.size > 1) {
+      // Calculate total delivery combining unique vendors
+      const uniqueVendorsArr = Array.from(splitVendorsMap.values());
+      const deliveryFee = uniqueVendorsArr.length * 30;
+      
+      multiVendorOption.push({
+        type: 'split',
+        vendors: uniqueVendorsArr,
+        totalPrice: splitTotalPrice,
+        matchedItemsCount: requestedItems.length,
+        matchedProducts: splitProducts,
+        finalEstimatedCost: splitTotalPrice + deliveryFee
+      });
+    }
+
+    // Combine and sort
+    const allOptions = [...singleVendorOptions, ...multiVendorOption].sort((a,b) => a.finalEstimatedCost - b.finalEstimatedCost);
+    return allOptions.slice(0, 3);
   } catch(error) {
     console.error('Combo engine error:', error);
     return [];

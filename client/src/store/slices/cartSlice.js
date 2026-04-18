@@ -28,12 +28,12 @@ const cartSlice = createSlice({
   reducers: {
     addToCart: (state, action) => {
       const { product, vendorId, vendorName } = action.payload;
-      // If cart has items from different vendor, clear it
-      if (state.vendorId && state.vendorId !== vendorId) {
-        state.items = [];
+
+      // Ensure root vendorId defaults to the first item added
+      if (!state.vendorId) {
+        state.vendorId = vendorId;
+        state.vendorName = vendorName;
       }
-      state.vendorId = vendorId;
-      state.vendorName = vendorName;
 
       const existing = state.items.find(i => i.productId === product._id);
       if (existing) {
@@ -45,6 +45,8 @@ const cartSlice = createSlice({
           price: product.price,
           mrp: product.mrp,
           unit: product.unit,
+          vendorId: vendorId,     // store on item
+          vendorName: vendorName, // store on item
           image: product.images?.[0] || '',
           quantity: 1,
           stock: product.stock

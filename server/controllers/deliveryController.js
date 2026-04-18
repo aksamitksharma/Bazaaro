@@ -177,7 +177,7 @@ exports.getDashboard = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [todayDeliveries, todayEarnings, activeOrder, pendingOrders] = await Promise.all([
+    const [todayDeliveries, todayEarnings, activeOrder, rawPendingOrders] = await Promise.all([
       Order.countDocuments({ deliveryPartnerId: dp._id, orderStatus: 'delivered', actualDelivery: { $gte: today } }),
       Order.aggregate([
         { $match: { deliveryPartnerId: dp._id, orderStatus: 'delivered', actualDelivery: { $gte: today } } },
@@ -188,8 +188,37 @@ exports.getDashboard = async (req, res) => {
         .populate('vendorId', 'shopName address'),
       Order.find({ orderStatus: 'ready', deliveryPartnerId: { $exists: false } })
         .populate('vendorId', 'shopName address')
-        .limit(10)
+        .limit(20)
     ]);
+
+    // AI Smart Delivery Pooling Logic
+    const poolingMap = {};
+    rawPendingOrders.forEach(o => {
+       const vId = o.vendorId?._id?.toString();
+       if(!vId) return;
+       if(!poolingMap[vId]) poolingMap[vId] = [];
+       poolingMap[vId].push(o);
+    });
+
+    const pendingOrders = [];
+    Object.keys(poolingMap).forEach(vId => {
+       const cluster = poolingMap[vId];
+       if(cluster.length > 1) {
+          // Identify as visual Pool
+          pendingOrders.push({
+             _id: `pool_${vId}_${Date.now()}`,
+             isPool: true,
+             orderNumber: `Batched Pooling (${cluster.length} orders)`,
+             items: cluster.flatMap(c => c.items),
+             total: cluster.reduce((sum, c) => sum + c.total, 0),
+             vendorId: cluster[0].vendorId,
+             orders: cluster.map(c => c._id),
+             deliveryCharge: cluster.reduce((sum, c) => sum + (c.deliveryCharge || 30), 0)
+          });
+       } else {
+          pendingOrders.push(cluster[0]);
+       }
+    });
 
     res.json({
       success: true,

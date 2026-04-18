@@ -86,6 +86,17 @@ export default function AdminDeliveryPartners() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if(!window.confirm('Delete this delivery partner? This cannot be undone.')) return;
+    try {
+      await adminAPI.deleteUser(id);
+      setPartners(prev => prev.filter(p => p._id !== id));
+      toast.success('Partner deleted completely');
+    } catch {
+      toast.error('Failed to delete');
+    }
+  };
+
   const online = partners.filter(p => p.isActive !== false);
   const total = partners.length;
 
@@ -173,19 +184,32 @@ export default function AdminDeliveryPartners() {
                     </span>
                   </td>
                   <td style={s.td}>
-                    <motion.button whileTap={{ scale: 0.9 }}
-                      onClick={() => handleToggle(p._id)}
-                      style={{
-                        ...s.actionBtn,
-                        background: p.isActive !== false ? '#FEE2E2' : '#D1FAE5',
-                        color: p.isActive !== false ? '#DC2626' : '#059669',
-                      }}
-                    >
-                      {p.isActive !== false
-                        ? <><BlockIcon style={{ fontSize: '0.85rem' }} /> Block</>
-                        : <><CheckCircleIcon style={{ fontSize: '0.85rem' }} /> Activate</>
-                      }
-                    </motion.button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <motion.button whileTap={{ scale: 0.9 }}
+                        onClick={() => handleToggle(p._id)}
+                        style={{
+                          ...s.actionBtn,
+                          background: p.isActive !== false ? '#FEE2E2' : '#D1FAE5',
+                          color: p.isActive !== false ? '#DC2626' : '#059669',
+                        }}
+                      >
+                        {p.isActive !== false
+                          ? <><BlockIcon style={{ fontSize: '0.85rem' }} /> Block</>
+                          : <><CheckCircleIcon style={{ fontSize: '0.85rem' }} /> Activate</>
+                        }
+                      </motion.button>
+                      
+                      <motion.button whileTap={{ scale: 0.9 }}
+                        onClick={() => handleDelete(p._id)}
+                        style={{
+                          ...s.actionBtn,
+                          background: '#EF4444',
+                          color: '#FFFFFF',
+                        }}
+                      >
+                        Delete
+                      </motion.button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -19,6 +19,35 @@ export default defineConfig({
           { src: 'icons.svg', sizes: '192x192', type: 'image/svg+xml' },
           { src: 'icons.svg', sizes: '512x512', type: 'image/svg+xml' }
         ]
+      },
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\/vendors\/dashboard/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'vendor-dashboard-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 // 1 day
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /\/api\/products\/vendor\/my/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'vendor-products-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24
+              }
+            }
+          }
+        ]
       }
     })
   ],

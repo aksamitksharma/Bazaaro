@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { vendorAPI, orderAPI } from '../../services/api';
+import { vendorAPI, orderAPI, productAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -31,6 +31,7 @@ const statCard = (bg, icon, label, value) => (
 export default function VendorDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isSellFast, setIsSellFast] = useState(false);
   const [loading, setLoading] = useState(true);
   const [demand, setDemand] = useState([]);
   const [pricing, setPricing] = useState([]);
@@ -46,6 +47,7 @@ export default function VendorDashboard() {
       ]);
       setDashboard(dashRes.data);
       setIsOpen(dashRes.data.vendor?.isOpen || false);
+      setIsSellFast(dashRes.data.vendor?.isSellFastMode || false);
       setDemand(dRes.data?.predictions || []);
       setPricing(pRes.data?.suggestions || []);
     } catch {
@@ -64,6 +66,26 @@ export default function VendorDashboard() {
     }
   };
 
+  const toggleSellFast = async () => {
+    try {
+      const { data } = await vendorAPI.toggleSellFast();
+      setIsSellFast(data.isSellFastMode);
+      toast.success(data.message);
+    } catch {
+      toast.error('Failed to toggle Sell Fast Mode');
+    }
+  };
+
+  const applyPriceSuggestion = async (productId, newPrice) => {
+    try {
+      await productAPI.update(productId, { price: newPrice });
+      toast.success('Price optimized successfully! ✨');
+      loadDash(); // refresh analytics and suggestions
+    } catch {
+      toast.error('Failed to quick-update price');
+    }
+  };
+
   if (loading) return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
       {[1,2,3,4].map(i => <div key={i} className="shimmer" style={{ height: 100, borderRadius: 'var(--radius-lg)' }} />)}
@@ -78,15 +100,27 @@ export default function VendorDashboard() {
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <DashboardIcon style={{ color: 'var(--primary)' }} /> Vendor Dashboard
         </h1>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={toggleShop}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-            padding: '0.6rem 1.25rem', borderRadius: 999, border: 'none', cursor: 'pointer',
-            background: isOpen ? 'var(--secondary)' : 'var(--danger)',
-            color: '#fff', fontWeight: 700, fontSize: '0.9rem',
-          }}>
-          {isOpen ? <><ToggleOnIcon /> Shop Open</> : <><ToggleOffIcon /> Shop Closed</>}
-        </motion.button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={toggleSellFast}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.6rem 1.25rem', borderRadius: 999, border: 'none', cursor: 'pointer',
+              background: isSellFast ? 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)' : '#FEE2E2',
+              color: isSellFast ? '#fff' : '#DC2626', fontWeight: 700, fontSize: '0.9rem',
+              boxShadow: isSellFast ? '0 4px 15px rgba(220, 38, 38, 0.4)' : 'none'
+            }}>
+            {isSellFast ? <><AutoAwesomeIcon style={{ fontSize: '1.1rem'}}/> Sell Fast 🔥 (ON)</> : <><AutoAwesomeIcon style={{ fontSize: '1.1rem'}}/> Sell Fast (OFF)</>}
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={toggleShop}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.6rem 1.25rem', borderRadius: 999, border: 'none', cursor: 'pointer',
+              background: isOpen ? 'var(--secondary)' : 'var(--danger)',
+              color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+            }}>
+            {isOpen ? <><ToggleOnIcon /> Shop Open</> : <><ToggleOffIcon /> Shop Closed</>}
+          </motion.button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
@@ -112,7 +146,19 @@ export default function VendorDashboard() {
             {pricing.map(p => (
               <div key={p.productId} style={{ background: '#ECFDF5', borderLeft: '4px solid var(--secondary)', padding: '1rem', borderRadius: '0 var(--radius) var(--radius) 0', boxShadow: 'var(--shadow-sm)' }}>
                 <p style={{ fontWeight: 800, color: 'var(--secondary)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Price Optimiser - {p.name}</p>
-                <p style={{ fontSize: '0.85rem' }}>{p.suggestion}</p>
+                <p style={{ fontSize: '0.85rem', marginBottom: '0.5rem' }}>{p.suggestion}</p>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                   {p.lowestCompetitorPrice && (
+                     <button onClick={() => applyPriceSuggestion(p.productId, p.lowestCompetitorPrice - 1)} style={{ padding: '0.4rem 0.8rem', background: '#059669', color: '#fff', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>
+                        Apply ✨ (₹{p.lowestCompetitorPrice - 1})
+                     </button>
+                   )}
+                   {p.avgMarketPrice && (
+                     <button onClick={() => applyPriceSuggestion(p.productId, Math.floor(p.avgMarketPrice))} style={{ padding: '0.4rem 0.8rem', background: '#059669', color: '#fff', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>
+                        Apply Market Avg ✨ (₹{Math.floor(p.avgMarketPrice)})
+                     </button>
+                   )}
+                </div>
               </div>
             ))}
           </div>

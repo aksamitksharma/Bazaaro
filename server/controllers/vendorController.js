@@ -125,6 +125,24 @@ exports.toggleShop = async (req, res) => {
   }
 };
 
+// @desc    Toggle Sell Fast Mode
+// @route   PUT /api/vendors/toggle-sell-fast
+exports.toggleSellFast = async (req, res) => {
+  try {
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: 'Vendor profile not found' });
+    }
+
+    vendor.isSellFastMode = !vendor.isSellFastMode;
+    await vendor.save();
+
+    res.json({ success: true, isSellFastMode: vendor.isSellFastMode, message: vendor.isSellFastMode ? 'Sell Fast Flash Mode Activated! 🔥' : 'Sell Fast Mode Off' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Get vendor dashboard data
 // @route   GET /api/vendors/dashboard
 exports.getDashboard = async (req, res) => {

@@ -9,6 +9,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import TwoWheelerIcon from '@mui/icons-material/TwoWheeler';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 export default function DeliveryDashboard() {
   const [dashboard, setDashboard] = useState(null);
@@ -102,7 +103,56 @@ export default function DeliveryDashboard() {
         </motion.div>
       </div>
 
-      {/* Orders */}
+      {/* Available Pending Orders (Smart Pool) */}
+      <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <AutoAwesomeIcon style={{ color: '#FCD34D' }} /> Available Smart Route Batches
+      </h2>
+      {(dashboard?.pendingOrders || []).length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
+          {dashboard.pendingOrders.map(order => (
+            <div key={order._id} style={{
+              background: order.isPool ? 'linear-gradient(135deg, #10B98122, #34D39922)' : '#fff', 
+              borderRadius: 'var(--radius-lg)', padding: '1.25rem',
+              boxShadow: 'var(--shadow-sm)', border: order.isPool ? '2px solid #10B981' : 'none'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <div>
+                  <p style={{ fontWeight: 700, color: order.isPool ? '#047857' : 'inherit' }}>
+                    {order.orderNumber || order._id?.slice(-6)}
+                  </p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>
+                    Extracted from {order.vendorId?.shopName}
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                   <p style={{ fontWeight: 800, color: 'var(--secondary)' }}>Earn ₹{order.deliveryCharge}</p>
+                </div>
+              </div>
+              <button 
+                onClick={async () => {
+                   try {
+                      if(order.isPool) {
+                         for(const cid of order.orders) await deliveryAPI.acceptOrder(cid);
+                      } else {
+                         await deliveryAPI.acceptOrder(order._id);
+                      }
+                      toast.success('Batch Accepted Successfully!');
+                      loadData();
+                   } catch { toast.error('Failed to accept order(s)'); }
+                }}
+                style={{ width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: 'var(--radius)', border: 'none', background: '#059669', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                Accept {order.isPool ? 'Batch' : 'Delivery'}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+         <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-lg)', padding: '2rem', textAlign: 'center', color: 'var(--text-3)', marginBottom: '2rem' }}>
+           <p style={{ fontWeight: 600 }}>No available orders right now.</p>
+         </div>
+      )}
+
+      {/* Assigned Orders */}
       <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <AssignmentIcon style={{ color: 'var(--accent)' }} /> Assigned Orders
       </h2>

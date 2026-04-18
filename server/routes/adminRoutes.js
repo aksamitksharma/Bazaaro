@@ -7,6 +7,7 @@ router.use(protect, authorize('admin'));
 router.get('/dashboard', admin.getDashboard);
 router.get('/users', admin.getUsers);
 router.put('/users/:id/toggle', admin.toggleUser);
+router.delete('/users/:id', admin.deleteUser);
 router.get('/vendors', admin.getVendors);
 router.put('/vendors/:id/approve', admin.approveVendor);
 router.get('/orders', admin.getAllOrders);

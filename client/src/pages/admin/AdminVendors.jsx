@@ -29,6 +29,17 @@ export default function AdminVendors() {
     } catch { toast.error('Action failed'); }
   };
 
+  const handleDelete = async (userId, vendorId) => {
+    if(!window.confirm('Delete this vendor? This cannot be undone.')) return;
+    try {
+      await adminAPI.deleteUser(userId);
+      setVendors(prev => prev.filter(v => v._id !== vendorId));
+      toast.success('Vendor deleted successfully');
+    } catch {
+      toast.error('Failed to delete vendor');
+    }
+  };
+
   return (
     <div>
       <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -59,13 +70,23 @@ export default function AdminVendors() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {v.isApproved ? (
-                    <span style={{
-                      display: 'flex', alignItems: 'center', gap: '0.25rem',
-                      padding: '0.3rem 0.75rem', borderRadius: 999,
-                      background: '#D1FAE5', color: '#065F46', fontSize: '0.75rem', fontWeight: 700,
-                    }}>
-                      <CheckCircleIcon style={{ fontSize: '0.85rem' }} /> Approved
-                    </span>
+                    <>
+                      <span style={{
+                        display: 'flex', alignItems: 'center', gap: '0.25rem',
+                        padding: '0.3rem 0.75rem', borderRadius: 999,
+                        background: '#D1FAE5', color: '#065F46', fontSize: '0.75rem', fontWeight: 700,
+                      }}>
+                        <CheckCircleIcon style={{ fontSize: '0.85rem' }} /> Approved
+                      </span>
+                      <button onClick={() => handleDelete(v.userId?._id, v._id)}
+                        style={{
+                          padding: '0.35rem 0.85rem', borderRadius: 999, border: 'none',
+                          background: '#EF4444', color: '#fff', fontSize: '0.8rem',
+                          fontWeight: 600, cursor: 'pointer', marginLeft: '0.5rem'
+                        }}>
+                        Delete
+                      </button>
+                    </>
                   ) : (
                     <>
                       <span style={{
@@ -90,6 +111,14 @@ export default function AdminVendors() {
                           fontWeight: 600, cursor: 'pointer',
                         }}>
                         Reject
+                      </button>
+                      <button onClick={() => handleDelete(v.userId?._id, v._id)}
+                        style={{
+                          padding: '0.35rem 0.85rem', borderRadius: 999, border: 'none',
+                          background: '#EF4444', color: '#fff', fontSize: '0.8rem',
+                          fontWeight: 600, cursor: 'pointer', marginLeft: '0.5rem'
+                        }}>
+                        Delete
                       </button>
                     </>
                   )}

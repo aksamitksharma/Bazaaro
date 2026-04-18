@@ -65,6 +65,16 @@ exports.toggleUser = async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
 
+exports.deleteUser = async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (user.role === 'delivery') await DeliveryPartner.findOneAndDelete({ userId: user._id });
+    if (user.role === 'vendor') await Vendor.findOneAndDelete({ userId: user._id });
+    res.json({ success: true, message: 'User deleted completely' });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+};
+
 exports.getVendors = async (req, res) => {
   try {
     const vendors = await Vendor.find({}).populate('userId', 'name phone email');
