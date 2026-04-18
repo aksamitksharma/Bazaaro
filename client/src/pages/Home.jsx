@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useSelector } from 'react-redux';
 import { productAPI, vendorAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -33,16 +34,22 @@ export default function Home() {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const { user } = useSelector(s => s.auth);
   const { t } = useTranslation();
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user]);
 
   const loadData = async () => {
+    setLoading(true);
     try {
+      const lat = user?.address?.coordinates?.lat;
+      const lng = user?.address?.coordinates?.lng;
+      const params = (lat && lng) ? { lat, lng, radius: 20 } : {};
+
       const [vendorsRes, productsRes] = await Promise.allSettled([
-        vendorAPI.getNearby({ lat: 28.6139, lng: 77.2090, radius: 10 }),
+        vendorAPI.getNearby(params),
         productAPI.getAll({ limit: 8 }),
       ]);
       if (vendorsRes.status === 'fulfilled') setShops(vendorsRes.value.data.vendors || []);

@@ -197,11 +197,33 @@ exports.updateProfile = async (req, res) => {
 
     if (name) user.name = name;
     if (email) user.email = email;
-    if (address) user.address = { ...user.address, ...address };
+    if (address) {
+      if (!user.address) user.address = {};
+      user.address.street = address.street || user.address.street || '';
+      user.address.city = address.city || user.address.city || '';
+      user.address.state = address.state || user.address.state || '';
+      user.address.pincode = address.pincode || user.address.pincode || '';
+    }
     if (avatar) user.avatar = avatar;
     if (language) user.language = language;
 
     await user.save();
+
+    // Cascade address update to Vendor profile if user is a vendor
+    if (user.role === 'vendor' && address) {
+      const vendor = await Vendor.findOne({ userId: user._id });
+      if (vendor) {
+        if (!vendor.address) vendor.address = {};
+        vendor.address.street = address.street || vendor.address.street || '';
+        vendor.address.city = address.city || vendor.address.city || '';
+        vendor.address.state = address.state || vendor.address.state || '';
+        vendor.address.pincode = address.pincode || vendor.address.pincode || '';
+        
+        if (name && !vendor.shopName) vendor.shopName = `${name}'s Shop`;
+        await vendor.save();
+      }
+    }
+
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
